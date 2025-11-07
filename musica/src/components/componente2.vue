@@ -2,6 +2,8 @@
   <div class="componente2">
     <h1>{{ titulo }}</h1>
     <p>{{ descripcion }}</p>
+    <button><router-link to="/comp1" class="nav-link">Componente 1</router-link></button>
+
   </div>
 </template>
 
@@ -9,7 +11,7 @@
 import { ref } from 'vue'
 
 const titulo = ref('Componente 2')
-const descripcion = ref('Este es el segundo componente — alterna con el primero')
+const descripcion = ref('¿Componente 2?')
 </script>
 
 <style scoped>
