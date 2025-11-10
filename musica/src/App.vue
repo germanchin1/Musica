@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import Navbar from './components/navbar.vue'
+import reproductor from './components/reproductor.vue';
 </script>
 
 <template>
   <div>
     <Navbar/>
+    <reproductor/>
 
 
     <div class="viewer">
