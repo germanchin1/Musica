@@ -6,13 +6,14 @@ import reproductor from './components/reproductor.vue';
 <template>
   <div>
     <Navbar/>
-    <reproductor/>
 
 
     <div class="viewer">
-      <router-view />
+      <router-view>      <reproductor/>
+</router-view>
     </div>
   </div>
+
 </template>
 
 <style scoped>

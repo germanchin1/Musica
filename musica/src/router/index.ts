@@ -1,11 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Componente1 from '../components/componente1.vue'
-import Componente2 from '../components/componente2.vue'
+import reproductor from '@/components/reproductor.vue'
 
 const routes = [
-  { path: '/', redirect: '/comp1' },
-  { path: '/comp1', name: 'Comp1', component: Componente1 },
-  { path: '/comp2', name: 'Comp2', component: Componente2 },
+  { path: '/', redirect: '' },
+  { path: '/reproductor', name: 'Reproductor', component: reproductor }
 ]
 
 const router = createRouter({
