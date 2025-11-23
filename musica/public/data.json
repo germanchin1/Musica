@@ -46,6 +46,117 @@
     "imagen": "img/img6.jfif",
     "cantante": "The Police",
     "año": 1978
+  },
+  {
+    "numero": 7,
+    "titulo": "Starman",
+    "cancion": "songs/song7.mp3",
+    "imagen": "img/img7.jfif",
+    "cantante": "David Bowie",
+    "año": 1972
+  },
+    {
+    "numero": 8,
+    "titulo": "Bark at the Moon",
+    "cancion": "songs/song8.mp3",
+    "imagen": "img/img8.jfif",
+    "cantante": "Ozzy Osbourne",
+    "año": 1983
+  },
+  {
+    "numero": 9,
+    "titulo": "Under the Bridge",
+    "cancion": "songs/song9.mp3",
+    "imagen": "img/img9.jfif",
+    "cantante": "Red Hot Chili Peppers",
+    "año": 1992
+  },
+  {
+    "numero": 10,
+    "titulo": "November Rain",
+    "cancion": "songs/song10.mp3",
+    "imagen": "img/img10.jfif",
+    "cantante": "Guns N' Roses",
+    "año": 1991
+  },
+  {
+    "numero": 11,
+    "titulo": "Hotel California",
+    "cancion": "songs/song11.mp3",
+    "imagen": "img/img11.jfif",
+    "cantante": "Eagles",
+    "año": 1976
+  },
+  {
+    "numero": 12,
+    "titulo": "Imagine",
+    "cancion": "songs/song12.mp3",
+    "imagen": "img/img12.jfif",
+    "cantante": "John Lennon",
+    "año": 1971
+  },
+  {
+    "numero": 13,
+    "titulo": "Smells Like Teen Spirit",
+    "cancion": "songs/song13.mp3",
+    "imagen": "img/img13.jfif",
+    "cantante": "Nirvana",
+    "año": 1991
+  },
+  {
+    "numero": 14,
+    "titulo": "Billie Jean",
+    "cancion": "songs/song14.mp3",
+    "imagen": "img/img14.jfif",
+    "cantante": "Michael Jackson",
+    "año": 1982
+  },
+  {
+    "numero": 15,
+    "titulo": "Like a Rolling Stone",
+    "cancion": "songs/song15.mp3",
+    "imagen": "img/img15.jfif",
+    "cantante": "Bob Dylan",
+    "año": 1965
+  },
+  {
+    "numero": 16,
+    "titulo": "Sweet Child O' Mine",
+    "cancion": "songs/song16.mp3",
+    "imagen": "img/img16.jfif",
+    "cantante": "Guns N' Roses",
+    "año": 1987
+  },
+  {
+    "numero": 17,
+    "titulo": "Wonderwall",
+    "cancion": "songs/song17.mp3",
+    "imagen": "img/img17.jfif",
+    "cantante": "Oasis",
+    "año": 1995
+  },
+  {
+    "numero": 18,
+    "titulo": "Livin' on a Prayer",
+    "cancion": "songs/song18.mp3",
+    "imagen": "img/img18.jfif",
+    "cantante": "Bon Jovi",
+    "año": 1986
+  },
+  {
+    "numero": 19,
+    "titulo": "Back in Black",
+    "cancion": "songs/song19.mp3",
+    "imagen": "img/img19.jfif",
+    "cantante": "AC/DC",
+    "año": 1980
+  },
+  {
+    "numero": 20,
+    "titulo": "Purple Rain",
+    "cancion": "songs/song20.mp3",
+    "imagen": "img/img20.jfif",
+    "cantante": "Prince",
+    "año": 1984
   }
-  
 ]
