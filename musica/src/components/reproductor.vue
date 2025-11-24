@@ -1,42 +1,22 @@
 <template>
   <div class="reproductor">
     <div class="controls">
-      <button @click="empezarMusica" aria-label="Reproducir">Play</button>
-      <button @click="siguientePregunta" aria-label="Siguiente Pregunta">Siguiente</button>
+      <button @click="play">Play</button>
     </div>
 
-    <div class="cover" aria-hidden="false">
-      <img id="imagen_cancion" class="cover-bg" :src="imagenFondo">
-      <img id="vinyl" class="vinyl" :src="imagenFondo" :class="{ spinning: reproduciendo }" alt="Vinilo girando">
+    <div class="cover">
+      <img class="cover-bg" :src="img" />
+      <img class="vinyl" :src="img" :class="{ spinning: playing }" />
     </div>
 
-    <div
-      v-if="opcionesPregunta.length"
-      class="radio-list"
-      role="radiogroup"
-      aria-label="Respuestas"
-      @change="verificarRespuesta"
-    >
-      <div
-        v-for="(opcion, index) in opcionesPregunta"
-        :key="`${opcion}-${index}`"
-        class="radio-wrap"
-      >
-        <label class="radio-item">
-          <input
-            type="radio"
-            name="radio"
-            :value="opcion"
-            v-model="respuestaSeleccionada"
-            :aria-label="`Opción ${index + 1}`"
-          />
-          <span v-html="opcion"></span>
-        </label>
-      </div>
+    <div v-if="choices.length" class="radio-list" @change="check">
+      <label v-for="(c, i) in choices" :key="i" class="radio-wrap">
+        <input type="radio" name="r" :value="c" v-model="selected" />
+        <span v-html="c"></span>
+      </label>
     </div>
 
-    <h1 class="contador" v-html="contadorTexto"></h1>
-
+    <h1 class="contador">{{ score }} aciertos</h1>
   </div>
 </template>
 
@@ -44,149 +24,108 @@
 import { ref, onMounted } from 'vue'
 import { Howl } from 'howler'
 
-const PISTAS_POR_RONDA = 4
-const OPCIONES_POR_PREGUNTA = 4
+const data = ref([])          // todas las canciones
+const round = ref([])         // 10 canciones seleccionadas
+const index = ref(0)          // canción actual
 
-const info = ref([])
-const pistasRonda = ref([])
-const nCancion = ref(0)
-const imagenFondo = ref('')
-const reproduciendo = ref(false)
-const opcionesPregunta = ref([])
-const respuestaCorrecta = ref('')
-const respuestaSeleccionada = ref('')
-const aciertos = ref(0)
-const contadorTexto = ref('0 aciertos')
-let sound = null
+const img = ref('')           // imagen vinilo
+const playing = ref(false)    // animación
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+const choices = ref([])       // opciones de respuesta
+const correct = ref('')       // respuesta correcta
+const selected = ref('')      // opción seleccionada
+const score = ref(0)          // aciertos
+const numeroDeJuegos = ref(0)   // número de juegos jugados
 
-const cargar_json = async () => {
-  const response = await fetch('/data.json')
-  info.value = await response.json()
-  if (info.value.length > 0) {
-    prepararRonda()
-  }
-}
+let audio = null
+const preguntasEchas = ref(0) // preguntas respondidas
 
-onMounted(cargar_json)
+const wait = ms => new Promise(r => setTimeout(r, ms))
 
-function empezarMusica() {
-  if (!pistasRonda.value.length) prepararRonda()
+onMounted(async () => {
+  const res = await fetch('/data.json')
+  data.value = await res.json()
+  prepareRound()
+})
 
-  const track = pistasRonda.value[nCancion.value]
-  if (!track) return
+// reproducir 5 segundos de la canción actual
+function play() {
+  const song = round.value[index.value]
+  if (!song) return
 
-  const ruta = track.cancion
-  if (sound) sound.stop()
+  if (audio) audio.stop()
 
-  sound = new Howl({
-    src: [ruta],
-    autoplay: false,
-    loop: false,
-    onload: async function () {
-      const duracion = sound?.duration?.() || 0
-      if (!duracion) return
+  audio = new Howl({
+    src: [song.cancion],
+    onload: async () => {
+      const dur = audio.duration()
+      const start = Math.random() * (dur - 5)
 
-      let tiempoAleatorio = Math.random() * duracion
-      console.log('Duracion:', duracion, 'Tiempo Aleatorio Inicial:', tiempoAleatorio)
-      while (tiempoAleatorio > duracion - 5) {
-        tiempoAleatorio = Math.random() * duracion
-      }
+      audio.seek(start)
+      audio.play()
+      playing.value = true
 
-      sound.seek?.(tiempoAleatorio)
-      sound.play?.()
-      reproduciendo.value = true
-      await sleep(5000)
-      sound.stop?.()
-      reproduciendo.value = false
-      console.log('Reproducción terminada en', tiempoAleatorio + 5) 
-    },
+      await wait(5000)
 
+      audio.stop()
+      playing.value = false
+    }
   })
 
-  imagenFondo.value = track.imagen || ''
+  img.value = song.imagen
 }
 
+// mezcla sencilla de arrays
+const shuffle = arr => arr.sort(() => Math.random() - 0.5)
 
-
-function prepararRonda() {
-  if (!info.value.length) return
-
-  const barajadas = mezclar([...info.value])
-  const limite = Math.min(PISTAS_POR_RONDA, barajadas.length)
-  pistasRonda.value = barajadas.splice(0, limite)
-  nCancion.value = 0
-  crearPreguntas()
+// preparar nueva ronda de 10 canciones
+function prepareRound() {
+  round.value = shuffle([...data.value]).slice(0, 10)
+  index.value = 0
+  preguntasEchas.value = 0
+  score.value = 0
+  prepareQuestion()
 }
 
-function mezclar(array) {
-  return array
-    .map((valor) => ({ valor, sort: Math.random() }))
-    .sort((a, b) => a.sort - b.sort)
-    .map(({ valor }) => valor)
+// preparar pregunta actual
+function prepareQuestion() {
+  const song = round.value[index.value]
+  img.value = song.imagen
+
+  const wrong = round.value
+    .map(s => s.titulo)
+    .filter(t => t !== song.titulo)
+
+  choices.value = shuffle([song.titulo, ...wrong.slice(0, 3)])
+  correct.value = song.titulo
+  selected.value = ''
 }
 
-function crearPreguntas() {
-  if (!pistasRonda.value.length) return
+// verificar respuesta y pasar automáticamente a la siguiente
+function check() {
+  preguntasEchas.value++
 
-  const pistaActual = pistasRonda.value[nCancion.value] || pistasRonda.value[0]
-  if (!pistaActual) return
+  if (selected.value === correct.value) score.value++
 
-  imagenFondo.value = pistaActual.imagen || ''
-
-  const titulosDisponibles = pistasRonda.value.map(cancion => cancion.titulo)
-  const distractores = titulosDisponibles.filter(titulo => titulo !== pistaActual.titulo)
-
-  const opciones = [pistaActual.titulo]
-  while (opciones.length < OPCIONES_POR_PREGUNTA && distractores.length) {
-    const indice = Math.floor(Math.random() * distractores.length)
-    opciones.push(distractores.splice(indice, 1)[0])
+  if (preguntasEchas.value >= 10) {
+    alert(`Juego terminado\nAciertos: ${score.value}\nFallos: ${10 - score.value}`)
+    numeroDeJuegos.value++
+    guardarResultado()
   }
 
-  if (opciones.length < OPCIONES_POR_PREGUNTA) {
-    const relleno = info.value
-      .map(cancion => cancion.titulo)
-      .filter(titulo => !opciones.includes(titulo))
-    while (opciones.length < OPCIONES_POR_PREGUNTA && relleno.length) {
-      opciones.push(relleno.shift())
-    }
-  }
-
-  opcionesPregunta.value = mezclar(opciones)
-  respuestaCorrecta.value = pistaActual.titulo
-  respuestaSeleccionada.value = ''
+  index.value++
+  prepareQuestion()
 }
 
-function siguientePregunta() {
-  if (!pistasRonda.value.length) return
-
-  if (sound) {
-    sound.stop()
-    reproduciendo.value = false
-  }
-
-  const siguienteIndice = nCancion.value + 1
-  if (siguienteIndice >= pistasRonda.value.length) {
-    prepararRonda()
-    return
-  }
-
-  nCancion.value = siguienteIndice
-  crearPreguntas()
+function guardarResultado() {
+  localStorage.setItem(`resultadoJuego_${numeroDeJuegos.value}`, JSON.stringify({
+    numeroDeJuegos: numeroDeJuegos.value,
+    aciertos: score.value,
+    fallos: 10 - score.value,
+    fecha: new Date().toISOString()
+  }))
 }
-
-function verificarRespuesta(event) {
-  const valor = event?.target?.value || respuestaSeleccionada.value
-  if (valor === respuestaCorrecta.value) {
-    aciertos.value += 1
-    contadorTexto.value = `${aciertos.value} aciertos`
-    siguientePregunta()
-  }
-}
-
 </script>
-
 
 
 <style scoped>
@@ -207,7 +146,6 @@ function verificarRespuesta(event) {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   justify-items: center;
   align-items: center;
-
 }
 
 .controls {
@@ -228,7 +166,12 @@ button {
   transition: background 120ms ease, transform 100ms ease;
 }
 
-button:hover {
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
   background: #f3f4f6;
   transform: translateY(-1px);
 }
@@ -275,28 +218,11 @@ button:hover {
   to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-label {
-  cursor: pointer;
-  display: inline-block;
-  width: 20%;
-}
-
-/* Radios en columna (específico para este componente) */
 .radio-list {
   display: flex;
-  flex-direction: row;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
-  width: 100%;
-}
-.radio-list label {
-  float: none;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  width: auto;
+  gap: 10px;
+  justify-content: center;
 }
 
 .radio-wrap {
@@ -307,23 +233,24 @@ label {
   border-radius: 12px;
   background: rgba(11,18,32,0.03);
   box-shadow: 0 2px 6px rgba(11,18,32,0.04);
-  transition: background 120ms ease, transform 120ms ease;
   min-width: 130px;
   justify-content: center;
+  cursor: pointer;
 }
+
 .radio-wrap:hover {
   background: rgba(11,18,32,0.06);
   transform: translateY(-2px);
 }
-.radio-item {
-  font-weight: 700;
-  color: #0b1220;
-}
-.radio-item input[type="radio"] {
+
+.radio-wrap input[type="radio"] {
   accent-color: #0b1220;
   width: 18px;
   height: 18px;
 }
 
-
+.contador {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
 </style>
