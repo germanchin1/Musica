@@ -1,17 +1,28 @@
 <template>
-  <div class="reproductor">
-    <div class="controls">
-      <button @click="play">Play</button>
+  <div class="reproductor" :class="{ bloqueado: !gameReady }">
+
+    <!-- Nombre del jugador -->
+    <div class="player-setup">
+      <label for="nombre">Escribe tu nombre</label>
+      <input id="nombre" type="text" v-model="playerInput" :disabled="nameLocked" />
+      <button @click="lockName" :disabled="nameLocked">Guardar</button>
     </div>
 
+    <!-- Botón Play -->
+    <div class="controls">
+      <button @click="play" :disabled="!gameReady">Play</button>
+    </div>
+
+    <!-- Imagen -->
     <div class="cover">
       <img class="cover-bg" :src="img" />
       <img class="vinyl" :src="img" :class="{ spinning: playing }" />
     </div>
 
+    <!-- Opciones -->
     <div v-if="choices.length" class="radio-list" @change="check">
       <label v-for="(c, i) in choices" :key="i" class="radio-wrap">
-        <input type="radio" name="r" :value="c" v-model="selected" />
+        <input type="radio" name="r" :value="c" v-model="selected" :disabled="!gameReady" />
         <span v-html="c"></span>
       </label>
     </div>
@@ -21,73 +32,70 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Howl } from 'howler'
+import { ref, onMounted } from "vue"
+import { Howl } from "howler"
 
-const data = ref([])          // todas las canciones
-const round = ref([])         // 10 canciones seleccionadas
-const index = ref(0)          // canción actual
+const data = ref([])
+const round = ref([])
+const index = ref(0)
 
-const img = ref('')           // imagen vinilo
-const playing = ref(false)    // animación
+const img = ref("")
+const playing = ref(false)
 
-const choices = ref([])       // opciones de respuesta
-const correct = ref('')       // respuesta correcta
-const selected = ref('')      // opción seleccionada
-const score = ref(0)          // aciertos
-const numeroDeJuegos = ref(0)   // número de juegos jugados
+const choices = ref([])
+const correct = ref("")
+const selected = ref("")
+const score = ref(0)
+
+const playerInput = ref("")
+const playerName = ref("")
+const nameLocked = ref(false)
+const gameReady = ref(false)
+
+const numeroDeJuegos = ref(0)
 
 let audio = null
-const preguntasEchas = ref(0) // preguntas respondidas
-
 const wait = ms => new Promise(r => setTimeout(r, ms))
 
 onMounted(async () => {
-  const res = await fetch('/data.json')
+  const res = await fetch("/data.json")
   data.value = await res.json()
   prepareRound()
 })
 
-// reproducir 5 segundos de la canción actual
 function play() {
+  if (!gameReady.value) return
+
   const song = round.value[index.value]
   if (!song) return
 
-  if (audio) audio.stop()
+  stopAudio()
 
   audio = new Howl({
     src: [song.cancion],
     onload: async () => {
       const dur = audio.duration()
       const start = Math.random() * (dur - 5)
-
       audio.seek(start)
       audio.play()
       playing.value = true
-
-      await wait(5000)
-
-      audio.stop()
-      playing.value = false
+      await wait(10000)
+      stopAudio()
     }
   })
 
   img.value = song.imagen
 }
 
-// mezcla sencilla de arrays
 const shuffle = arr => arr.sort(() => Math.random() - 0.5)
 
-// preparar nueva ronda de 10 canciones
 function prepareRound() {
   round.value = shuffle([...data.value]).slice(0, 10)
   index.value = 0
-  preguntasEchas.value = 0
   score.value = 0
   prepareQuestion()
 }
 
-// preparar pregunta actual
 function prepareQuestion() {
   const song = round.value[index.value]
   img.value = song.imagen
@@ -98,34 +106,60 @@ function prepareQuestion() {
 
   choices.value = shuffle([song.titulo, ...wrong.slice(0, 3)])
   correct.value = song.titulo
-  selected.value = ''
+  selected.value = ""
 }
 
-// verificar respuesta y pasar automáticamente a la siguiente
 function check() {
-  preguntasEchas.value++
+  stopAudio()
 
   if (selected.value === correct.value) score.value++
 
-  if (preguntasEchas.value >= 10) {
-    alert(`Juego terminado\nAciertos: ${score.value}\nFallos: ${10 - score.value}`)
-    numeroDeJuegos.value++
-    guardarResultado()
+  index.value++
+
+  if (index.value >= round.value.length) {
+    finalizarJuego()
+    return
   }
 
-  index.value++
   prepareQuestion()
+  play()
+}
+
+function finalizarJuego() {
+  alert(`Juego terminado\nAciertos: ${score.value}\nFallos: ${10 - score.value}`)
+  numeroDeJuegos.value++
+  guardarResultado()
 }
 
 function guardarResultado() {
-  localStorage.setItem(`resultadoJuego_${numeroDeJuegos.value}`, JSON.stringify({
-    numeroDeJuegos: numeroDeJuegos.value,
-    aciertos: score.value,
-    fallos: 10 - score.value,
-    fecha: new Date().toISOString()
-  }))
+  localStorage.setItem("resultadoJuego_" + numeroDeJuegos.value,
+    JSON.stringify({
+      numeroDeJuegos: numeroDeJuegos.value,
+      aciertos: score.value,
+      fallos: 10 - score.value,
+      fecha: new Date().toISOString(),
+      jugador: playerName.value
+    })
+  )
+}
+
+function lockName() {
+  const nombre = playerInput.value.trim()
+  if (!nombre) return
+
+  playerName.value = nombre
+  nameLocked.value = true
+  gameReady.value = true
+}
+
+function stopAudio() {
+  if (audio) {
+    audio.stop()
+    playing.value = false
+  }
 }
 </script>
+
 
 
 <style scoped>
@@ -148,10 +182,39 @@ function guardarResultado() {
   align-items: center;
 }
 
+.reproductor.bloqueado .controls,
+.reproductor.bloqueado .cover,
+.reproductor.bloqueado .radio-list,
+.reproductor.bloqueado .contador {
+  opacity: 0.5;
+}
+
 .controls {
   display: flex;
   gap: 8px;
   justify-content: center;
+}
+
+.player-setup {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-setup input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(11,18,32,0.2);
+}
+
+.guardar-nombre {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(11,18,32,0.08);
+  cursor: pointer;
 }
 
 button {
