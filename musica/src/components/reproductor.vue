@@ -4,7 +4,12 @@
     <!-- Nombre del jugador -->
     <div class="player-setup">
       <label for="nombre">Escribe tu nombre</label>
-      <input id="nombre" type="text" v-model="playerInput" :disabled="nameLocked" />
+      <input
+        id="nombre"
+        type="text"
+        v-model="playerInput"
+        :disabled="nameLocked"
+      />
       <button @click="lockName" :disabled="nameLocked">Guardar</button>
     </div>
 
@@ -21,8 +26,18 @@
 
     <!-- Opciones -->
     <div v-if="choices.length" class="radio-list" @change="check">
-      <label v-for="(c, i) in choices" :key="i" class="radio-wrap">
-        <input type="radio" name="r" :value="c" v-model="selected" :disabled="!gameReady" />
+      <label
+        v-for="(c, i) in choices"
+        :key="i"
+        class="radio-wrap"
+      >
+        <input
+          type="radio"
+          name="r"
+          :value="c"
+          v-model="selected"
+          :disabled="!gameReady"
+        />
         <span v-html="c"></span>
       </label>
     </div>
@@ -52,17 +67,24 @@ const playerName = ref("")
 const nameLocked = ref(false)
 const gameReady = ref(false)
 
-const numeroDeJuegos = ref(0)
+// Número de partidas guardadas en localStorage
+const numeroDeJuegos = ref(
+  Object.keys(localStorage).filter(k => k.startsWith("resultadoJuego_")).length
+)
 
 let audio = null
 const wait = ms => new Promise(r => setTimeout(r, ms))
 
+// Cargar datos de canciones
 onMounted(async () => {
   const res = await fetch("/data.json")
   data.value = await res.json()
-  prepareRound()
+
+  // Al inicio: todo deshabilitado excepto nombre
+  resetToInitialState()
 })
 
+// Reproducir
 function play() {
   if (!gameReady.value) return
 
@@ -79,6 +101,7 @@ function play() {
       audio.seek(start)
       audio.play()
       playing.value = true
+
       await wait(10000)
       stopAudio()
     }
@@ -87,8 +110,10 @@ function play() {
   img.value = song.imagen
 }
 
+// Barajar
 const shuffle = arr => arr.sort(() => Math.random() - 0.5)
 
+// Crear ronda de 10 canciones
 function prepareRound() {
   round.value = shuffle([...data.value]).slice(0, 10)
   index.value = 0
@@ -96,6 +121,7 @@ function prepareRound() {
   prepareQuestion()
 }
 
+// Crear pregunta
 function prepareQuestion() {
   const song = round.value[index.value]
   img.value = song.imagen
@@ -109,7 +135,10 @@ function prepareQuestion() {
   selected.value = ""
 }
 
+// Comprobar selección
 function check() {
+  if (!gameReady.value) return
+
   stopAudio()
 
   if (selected.value === correct.value) score.value++
@@ -125,16 +154,22 @@ function check() {
   play()
 }
 
+// Finalizar ronda → volver al estado inicial
 function finalizarJuego() {
   alert(`Juego terminado\nAciertos: ${score.value}\nFallos: ${10 - score.value}`)
+
   numeroDeJuegos.value++
   guardarResultado()
+
+  resetToInitialState()
 }
 
+// Guardar resultado en localStorage
 function guardarResultado() {
-  localStorage.setItem("resultadoJuego_" + numeroDeJuegos.value,
+  localStorage.setItem(
+    `resultadoJuego_${numeroDeJuegos.value}`,
     JSON.stringify({
-      numeroDeJuegos: numeroDeJuegos.value,
+      numeroDeJuego: numeroDeJuegos.value,
       aciertos: score.value,
       fallos: 10 - score.value,
       fecha: new Date().toISOString(),
@@ -143,6 +178,21 @@ function guardarResultado() {
   )
 }
 
+// Estado inicial después de terminar
+function resetToInitialState() {
+  gameReady.value = false
+  nameLocked.value = false
+  playerInput.value = ""
+  playerName.value = ""
+
+  choices.value = []
+  selected.value = ""
+  img.value = ""
+  index.value = 0
+  score.value = 0
+}
+
+// Guardar nombre y arrancar juego
 function lockName() {
   const nombre = playerInput.value.trim()
   if (!nombre) return
@@ -150,8 +200,11 @@ function lockName() {
   playerName.value = nombre
   nameLocked.value = true
   gameReady.value = true
+
+  prepareRound()
 }
 
+// Parar audio
 function stopAudio() {
   if (audio) {
     audio.stop()
@@ -162,7 +215,10 @@ function stopAudio() {
 
 
 
-<style scoped>
+
+
+
+<style scoped="">
 .reproductor {
   position: fixed;
   top: 24px;
