@@ -1,9 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import reproductor from '@/components/reproductor.vue'
+import Landing from '@/components/Landing.vue'
+import Reproductor from '@/components/reproductor.vue'
 
 const routes = [
-  { path: '/', redirect: '' },
-  { path: '/reproductor', name: 'Reproductor', component: reproductor }
+  { path: '/', name: 'Inicio', component: Landing },
+  { path: '/reproductor', name: 'Reproductor', component: Reproductor },
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
 const router = createRouter({

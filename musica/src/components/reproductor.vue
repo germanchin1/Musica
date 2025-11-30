@@ -1,5 +1,5 @@
 <template>
-  <div class="reproductor" :class="{ bloqueado: !gameReady }">
+  <div class="reproductor" v-if="!showResults" :class="{ bloqueado: !gameReady }">
 
     <!-- Nombre del jugador -->
     <div class="player-setup">
@@ -9,13 +9,14 @@
         type="text"
         v-model="playerInput"
         :disabled="nameLocked"
+        placeholder="Tu nombre"
       />
-      <button @click="lockName" :disabled="nameLocked">Guardar</button>
+      <button class="guardar-nombre" @click="lockName" :disabled="nameLocked">Guardar</button>
     </div>
 
     <!-- Botón Play -->
     <div class="controls">
-      <button @click="play" :disabled="!gameReady">Play</button>
+      <button class="primary" @click="play" :disabled="!gameReady">Play</button>
     </div>
 
     <!-- Imagen -->
@@ -44,11 +45,17 @@
 
     <h1 class="contador">{{ score }} aciertos</h1>
   </div>
+
+  <div v-else class="post-game">
+    <Resultados class="resultados-panel" :refresh-token="resultsRefresh" />
+    <button class="reiniciar" @click="nuevaPartida">Jugar otra vez</button>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue"
 import { Howl } from "howler"
+import Resultados from "./resultados.vue"
 
 const data = ref([])
 const round = ref([])
@@ -66,6 +73,8 @@ const playerInput = ref("")
 const playerName = ref("")
 const nameLocked = ref(false)
 const gameReady = ref(false)
+const showResults = ref(false)
+const resultsRefresh = ref(0)
 
 // Número de partidas guardadas en localStorage
 const numeroDeJuegos = ref(
@@ -79,6 +88,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms))
 onMounted(async () => {
   const res = await fetch("/data.json")
   data.value = await res.json()
+
+  const storedName = localStorage.getItem("nombreJugador")
+  if (storedName) {
+    playerInput.value = storedName
+  }
 
   // Al inicio: todo deshabilitado excepto nombre
   resetToInitialState()
@@ -124,6 +138,10 @@ function prepareRound() {
 // Crear pregunta
 function prepareQuestion() {
   const song = round.value[index.value]
+  if (!song) {
+    choices.value = []
+    return
+  }
   img.value = song.imagen
 
   const wrong = round.value
@@ -156,22 +174,27 @@ function check() {
 
 // Finalizar ronda → volver al estado inicial
 function finalizarJuego() {
-  alert(`Juego terminado\nAciertos: ${score.value}\nFallos: ${10 - score.value}`)
+  const totalPreguntas = round.value.length || 0
+  const fallos = Math.max(totalPreguntas - score.value, 0)
+  alert(`Juego terminado\nAciertos: ${score.value}\nFallos: ${fallos}`)
 
   numeroDeJuegos.value++
-  guardarResultado()
+  guardarResultado(totalPreguntas, fallos)
+
+  showResults.value = true
+  resultsRefresh.value += 1
 
   resetToInitialState()
 }
 
 // Guardar resultado en localStorage
-function guardarResultado() {
+function guardarResultado(totalPreguntas, fallos) {
   localStorage.setItem(
     `resultadoJuego_${numeroDeJuegos.value}`,
     JSON.stringify({
       numeroDeJuego: numeroDeJuegos.value,
       aciertos: score.value,
-      fallos: 10 - score.value,
+      fallos: typeof fallos === "number" ? fallos : Math.max(totalPreguntas - score.value, 0),
       fecha: new Date().toISOString(),
       jugador: playerName.value
     })
@@ -180,10 +203,15 @@ function guardarResultado() {
 
 // Estado inicial después de terminar
 function resetToInitialState() {
+  stopAudio()
   gameReady.value = false
   nameLocked.value = false
-  playerInput.value = ""
   playerName.value = ""
+  // Mantenemos el último nombre escrito para facilitar repetir partidas
+  if (!playerInput.value) {
+    const storedName = localStorage.getItem("nombreJugador")
+    playerInput.value = storedName || ""
+  }
 
   choices.value = []
   selected.value = ""
@@ -200,6 +228,8 @@ function lockName() {
   playerName.value = nombre
   nameLocked.value = true
   gameReady.value = true
+  showResults.value = false
+  localStorage.setItem("nombreJugador", nombre)
 
   prepareRound()
 }
@@ -211,6 +241,11 @@ function stopAudio() {
     playing.value = false
   }
 }
+
+function nuevaPartida() {
+  showResults.value = false
+  resetToInitialState()
+}
 </script>
 
 
@@ -218,88 +253,88 @@ function stopAudio() {
 
 
 
-<style scoped="">
+<style scoped>
 .reproductor {
-  position: fixed;
-  top: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 980px;
-  max-width: calc(100% - 48px);
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(11,18,32,0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  justify-items: center;
-  align-items: center;
-}
-
-.reproductor.bloqueado .controls,
-.reproductor.bloqueado .cover,
-.reproductor.bloqueado .radio-list,
-.reproductor.bloqueado .contador {
-  opacity: 0.5;
-}
-
-.controls {
+  width: min(960px, 100%);
+  margin: 24px auto 80px;
+  padding: 32px;
   display: flex;
-  gap: 8px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 24px;
+  border-radius: 30px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.15);
+}
+
+.reproductor.bloqueado {
+  opacity: 0.8;
 }
 
 .player-setup {
-  width: 100%;
   display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.player-setup label {
+  font-weight: 600;
+  color: #475569;
+  flex-basis: 100%;
 }
 
 .player-setup input {
   flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(11,18,32,0.2);
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  font-size: 1rem;
+  background: rgba(248, 250, 252, 0.9);
 }
 
-.guardar-nombre {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(11,18,32,0.08);
-  cursor: pointer;
-}
-
-button {
-  font-size: 14px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(11,18,32,0.08);
+.guardar-nombre,
+.primary,
+.reiniciar {
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
   background: #fff;
   color: #0b1220;
   font-weight: 600;
   cursor: pointer;
-  transition: background 120ms ease, transform 100ms ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.guardar-nombre:hover:not(:disabled),
+.primary:hover:not(:disabled),
+.reiniciar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.12);
+}
+
+.primary {
+  background: linear-gradient(120deg, #2563eb, #ec4899);
+  color: #fff;
+  border: none;
 }
 
 button:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-button:hover:not(:disabled) {
-  background: #f3f4f6;
-  transform: translateY(-1px);
+.controls {
+  display: flex;
+  justify-content: center;
 }
 
 .cover {
+  width: 320px;
+  height: 320px;
+  margin: 0 auto;
   position: relative;
-  width: 240px;
-  height: 240px;
-  margin-inline: auto;
 }
 
 .cover-bg {
@@ -308,8 +343,8 @@ button:hover:not(:disabled) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 10px;
-  filter: blur(10px) brightness(0.45);
+  border-radius: 24px;
+  filter: blur(16px) brightness(0.4);
 }
 
 .vinyl {
@@ -317,14 +352,12 @@ button:hover:not(:disabled) {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
-  object-fit: cover;
+  width: 260px;
+  height: 260px;
   border-radius: 50%;
-  border: 6px solid rgba(0, 0, 0, 0.5);
-  background: #000;
-  transform-origin: 50% 50%;
-  animation: spin 10s linear infinite;
+  border: 12px solid rgba(15, 23, 42, 0.6);
+  object-fit: cover;
+  animation: spin 12s linear infinite;
   animation-play-state: paused;
 }
 
@@ -338,38 +371,64 @@ button:hover:not(:disabled) {
 }
 
 .radio-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  width: 100%;
 }
 
 .radio-wrap {
-  display: inline-flex;
+  display: flex;
+  gap: 12px;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  background: rgba(11,18,32,0.03);
-  box-shadow: 0 2px 6px rgba(11,18,32,0.04);
-  min-width: 130px;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.radio-wrap:hover {
-  background: rgba(11,18,32,0.06);
-  transform: translateY(-2px);
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.9);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
 }
 
 .radio-wrap input[type="radio"] {
-  accent-color: #0b1220;
-  width: 18px;
-  height: 18px;
+  accent-color: #2563eb;
+  width: 20px;
+  height: 20px;
 }
 
 .contador {
-  font-size: 1.5rem;
-  font-weight: bold;
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  color: #111827;
+}
+
+.post-game {
+  width: min(720px, 100%);
+  margin: 40px auto 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.resultados-panel {
+  width: 100%;
+}
+
+.reiniciar {
+  align-self: center;
+}
+
+@media (max-width: 640px) {
+  .reproductor {
+    padding: 24px;
+  }
+  .cover {
+    width: 240px;
+    height: 240px;
+  }
+  .vinyl {
+    width: 200px;
+    height: 200px;
+  }
 }
 </style>
