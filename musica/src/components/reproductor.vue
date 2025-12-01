@@ -47,7 +47,7 @@
   </div>
 
   <div v-else class="post-game">
-    <Resultados class="resultados-panel" :refresh-token="resultsRefresh" />
+    <Resultados class="resultados-panel" />
     <button class="reiniciar" @click="nuevaPartida">Jugar otra vez</button>
   </div>
 </template>
@@ -74,7 +74,6 @@ const playerName = ref("")
 const nameLocked = ref(false)
 const gameReady = ref(false)
 const showResults = ref(false)
-const resultsRefresh = ref(0)
 
 // Número de partidas guardadas en localStorage
 const numeroDeJuegos = ref(
@@ -172,7 +171,7 @@ function check() {
   play()
 }
 
-// Finalizar ronda → volver al estado inicial
+// Finalizar ronda y volver al estado inicial
 function finalizarJuego() {
   const totalPreguntas = round.value.length || 0
   const fallos = Math.max(totalPreguntas - score.value, 0)
@@ -182,7 +181,6 @@ function finalizarJuego() {
   guardarResultado(totalPreguntas, fallos)
 
   showResults.value = true
-  resultsRefresh.value += 1
 
   resetToInitialState()
 }

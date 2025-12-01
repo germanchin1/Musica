@@ -8,7 +8,7 @@
 
     <section class="leaderboard">
       <h2>Top reciente</h2>
-      <Resultados :show-title="false" />
+      <Resultados />
     </section>
   </section>
 </template>

@@ -1,148 +1,92 @@
 <template>
-  <section class="resultados" v-if="records.length">
-    <h2 v-if="showTitle">Top 10 partidas</h2>
-    <ol>
-      <li v-for="(item, idx) in records" :key="item.id || idx">
-        <span class="jugador">{{ item.jugador || 'Anónimo' }}</span>
-        <span class="datos">
-          <strong>{{ item.aciertos }}</strong> aciertos
-          <span class="fecha">· {{ formatDate(item.fecha) }}</span>
-        </span>
-      </li>
-    </ol>
-  </section>
-  <section class="resultados" v-else>
-    <h2 v-if="showTitle">Top 10 partidas</h2>
-    <p class="sin-datos">Aún no hay resultados guardados.</p>
-  </section>
+  <div class="resultados">
+    <div v-if="records.length">
+      <div v-for="(item, i) in records" :key="item.id" class="registro">
+        <span class="posicion">{{ i + 1 }}.</span>
+        <div class="datos">
+          <p class="jugador">{{ item.jugador }}</p>
+          <p class="detalles">
+            {{ item.aciertos }} aciertos
+            <span class="fecha">{{ item.fecha }}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <p v-else class="sin-datos">Aún no hay resultados guardados.</p>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onUnmounted } from 'vue'
-
-const props = defineProps({
-  refreshToken: {
-    type: Number,
-    default: 0
-  },
-  showTitle: {
-    type: Boolean,
-    default: true
-  }
-})
+import { ref } from 'vue'
 
 const records = ref([])
-let storageHandler = null
 
-function loadResults() {
-  if (typeof window === 'undefined') return
-
-  const keys = Object.keys(localStorage).filter((k) => k.startsWith('resultadoJuego_'))
-  const parsed = keys
-    .map((key) => {
-      try {
-        const raw = localStorage.getItem(key)
-        if (!raw) return null
-        const data = JSON.parse(raw)
-        return {
-          id: key,
-          jugador: data?.jugador || 'Anónimo',
-          aciertos: Number(data?.aciertos) || 0,
-          fecha: data?.fecha || new Date().toISOString(),
-        }
-      } catch (error) {
-        return null
+function cargar() {
+  records.value = Object.keys(localStorage)
+    .filter(k => k.startsWith('resultadoJuego_'))
+    .map(k => {
+      const d = JSON.parse(localStorage.getItem(k) || '{}')
+      return {
+        id: k,
+        jugador: d.jugador,
+        aciertos: Number(d.aciertos) || 0,
+        fecha: d.fecha ? new Date(d.fecha).toLocaleDateString('es-ES') : ''
       }
     })
-    .filter(Boolean)
-    .sort((a, b) => {
-      if (b.aciertos !== a.aciertos) return b.aciertos - a.aciertos
-      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-    })
+    .sort((a, b) => b.aciertos - a.aciertos)
     .slice(0, 10)
-
-  records.value = parsed
 }
 
-function formatDate(value) {
-  if (!value) return 'Fecha desconocida'
-  const date = new Date(value)
-  return isNaN(date.getTime())
-    ? 'Fecha desconocida'
-    : new Intl.DateTimeFormat('es-ES', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date)
-}
-
-onMounted(() => {
-  loadResults()
-  storageHandler = () => loadResults()
-  window.addEventListener('storage', storageHandler)
-})
-
-onUnmounted(() => {
-  if (storageHandler) {
-    window.removeEventListener('storage', storageHandler)
-  }
-})
-
-watch(() => props.refreshToken, loadResults)
+cargar()
 </script>
+
+
 
 <style scoped>
 .resultados {
-  width: 100%;
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid rgba(11, 18, 32, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.resultados h2 {
-  margin: 0 0 12px;
-  font-size: 1.2rem;
-}
-
-.resultados ol {
-  margin: 0;
-  padding-left: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.resultados li {
+.registro {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
 }
 
-.jugador {
+.posicion {
   font-weight: 600;
-  color: #0b1220;
+  color: #0f172a;
 }
 
 .datos {
-  font-size: 0.9rem;
-  color: #4b5563;
+  flex: 1;
 }
 
-.datos strong {
-  color: #0b1220;
+.jugador {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.detalles {
+  margin: 2px 0 0;
+  color: #475569;
+  font-size: 0.9rem;
 }
 
 .fecha {
-  margin-left: 4px;
+  margin-left: 6px;
+  color: #94a3b8;
 }
 
 .sin-datos {
   margin: 0;
-  color: #6b7280;
+  color: #94a3b8;
 }
 </style>

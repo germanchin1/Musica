@@ -2,7 +2,7 @@
     <header class="navbar">
         <RouterLink to="/" class="brand">
             <span class="logo-dot" aria-hidden="true"></span>
-            <span class="logo-text">Vinyl Guessr</span>
+            <span class="logo-text">Concurso Musical</span>
         </RouterLink>
 
         <nav class="links">
